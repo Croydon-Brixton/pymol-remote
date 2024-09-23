@@ -22,6 +22,7 @@ import os
 import socket
 import tempfile
 import threading
+from typing import Callable
 from xmlrpc.server import SimpleXMLRPCServer
 
 from pymolrpc.common import (
@@ -30,6 +31,7 @@ from pymolrpc.common import (
     LOG_LEVEL,
     N_PORTS_TO_TRY,
     PYMOL_RPC_DEFAULT_PORT,
+    default,
 )
 
 logger = logging.getLogger("server")
@@ -50,7 +52,40 @@ except ImportError as e:
 _server = None
 
 
-def get_local_ip():
+class PymolXMLRPCServer(SimpleXMLRPCServer):
+    def __init__(
+        self,
+        hostname: str,
+        port: int,
+    ):
+        super().__init__(
+            address=(hostname, port),
+            logRequests=False,
+            allow_none=True,
+            use_builtin_types=True,
+        )
+
+    def register_function(self, func: Callable, name: str = None):
+        """
+        Register a function with the server while enabling keyword arguments.
+
+        Args:
+            - func: The function to register.
+            name (str, optional): The name to register the function under. If None, uses the function's name.
+
+        Reference:
+            - https://stackoverflow.com/questions/119802/using-kwargs-with-simplexmlrpcserver-in-python
+        """
+
+        def _function(args: list, kwargs: dict):
+            return func(*args, **kwargs)
+
+        _function.__name__ = func.__name__
+        _function.__doc__ = func.__doc__
+        super().register_function(_function, default(name, func.__name__))
+
+
+def _get_local_ip():
     try:
         # Create a socket and connect to an external server
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -138,9 +173,10 @@ def launch_server(
     cgo_dict = {}
     for i in range(n_ports_to_try):
         try:
-            _server = SimpleXMLRPCServer(
-                (hostname, port + i), logRequests=0, allow_none=True
-            )
+            _server = PymolXMLRPCServer(hostname, port + i)
+            # _server = SimpleXMLRPCServer(
+            #     (hostname, port + i), logRequests=0, allow_none=True
+            # )
         except Exception:  # noqa: E722
             _server = None
         else:
@@ -148,7 +184,7 @@ def launch_server(
 
     if _server:
         ip_address = (
-            get_local_ip() if hostname in (LOCALHOST, ALL_INTERFACES) else hostname
+            _get_local_ip() if hostname in (LOCALHOST, ALL_INTERFACES) else hostname
         )
 
         # register pymol built-ins
@@ -168,55 +204,3 @@ def launch_server(
     else:
         print("xml-rpc server could not be started")
         logger.error("xml-rpc server could not be started")
-
-
-class PymolXMLRPCServer(SimpleXMLRPCServer):
-    def __init__(
-        self,
-        hostname: str,
-        port: int,
-        interface: "PymolXMLRPCInterface",
-    ):
-        self.interface = interface
-        super().__init__((hostname, port), logRequests=0, allow_none=True)
-
-        def _dispatch(self, method, params):
-            func = None
-
-            if hasattr(self.interface, method):
-                func = getattr(self.interface, method)
-            elif hasattr(pymol_cmd, method):
-                func = getattr(pymol_cmd, method)
-
-            if not callable(func):
-                raise Exception(
-                    f"Function {method} not found. Existing functions: {dir(self.interface)}"
-                )
-            else:
-                result = func(*params)
-
-            return result
-
-
-class PymolXMLRPCInterface:
-    def __init__(
-        self,
-        hostname: str = os.getenv("PYMOL_RPCHOST", ALL_INTERFACES),
-        port: int = os.getenv("PYMOL_RPC_PORT", PYMOL_RPC_DEFAULT_PORT),
-    ):
-        self.hostname = hostname
-        self.port = port
-        self._server = PymolXMLRPCServer(self.hostname, self.port, self)
-        server_thread = threading.Thread(target=self._server.serve_forever)
-        server_thread.daemon = True
-        server_thread.start()
-        print(f"xml-rpc server running on host {self.hostname}, port {self.port}")
-
-    def close_all(self):
-        pymol_cmd.delete("*")
-
-    def load_example(self):
-        pymol_cmd.load("1ubq")
-
-    def get_state(self, selection: str = "(all)", state: int = -1, format: str = "pdb"):
-        return get_state(selection, state, format)
