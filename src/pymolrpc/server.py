@@ -79,6 +79,7 @@ def launch_server(
         The server will attempt to bind to the first available port in the range
         [port, port + n_ports_to_try - 1]. If successful, it prints the host and port information.
     """
+    print("launching server")
     global cgo_dict, _server
     cgo_dict = {}
     for i in range(n_ports_to_try):
@@ -105,6 +106,7 @@ def launch_server(
         server_thread = threading.Thread(target=_server.serve_forever)
         server_thread.daemon = True
         server_thread.start()
+        logger.info("xml-rpc server running on host %s, port %d" % (hostname, port + i))
     else:
         print("xml-rpc server could not be started")
         logger.error("xml-rpc server could not be started")

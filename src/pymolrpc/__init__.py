@@ -9,13 +9,13 @@ def launch_pymol_with_rpc(args=None, block_input_hook=0):
     import sys
 
     import pymol
-    from pymol import _cmd, _launch_no_gui, invocation, invocations, prime_pymol
+    from pymol import _cmd, _launch_no_gui, invocation, prime_pymol
 
     if args is None:
         args = sys.argv
     invocation.parse_args(args)
-    invocations.deferred.append(
-        "_do__ /import pymol_rpc.server;pymol_rpc.server.launch_server()"
+    invocation.options.deferred.append(
+        "_do__ /import pymolrpc.server;pymolrpc.server.launch_server()"
     )
 
     if invocation.options.gui == "pmg_qt":
