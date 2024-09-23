@@ -6,6 +6,8 @@ License:  PyMol
 NOTE: All code here will be executed on the PyMol server side (where you are running PyMol)
 """
 
+from __future__ import annotations
+
 import inspect
 import os
 import socket

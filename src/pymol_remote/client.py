@@ -4,6 +4,8 @@ A client for the PyMOL RPC server.
 # NOTE: All code here will be executed on the client side (where you are running python & this file)
 """
 
+from __future__ import annotations
+
 import logging
 import socket
 from http.client import HTTPConnection

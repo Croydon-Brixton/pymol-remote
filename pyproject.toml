@@ -6,7 +6,8 @@ authors = [
 ]
 readme = "README.md"
 dynamic = ["version"]
-license = {file = "license.txt"}
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
 dependencies = []
 
 
