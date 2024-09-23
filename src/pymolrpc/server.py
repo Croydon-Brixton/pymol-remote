@@ -74,8 +74,10 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
         def _function(args: list, kwargs: dict = {}):
             return func(*args, **kwargs)
 
+        # Transfer name, docstring and signature
         _function.__name__ = func.__name__
         _function.__doc__ = func.__doc__
+        _function.__signature__ = inspect.signature(func)
         super().register_function(_function, default(name, func.__name__))
 
 
