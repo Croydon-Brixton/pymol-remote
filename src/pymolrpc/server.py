@@ -17,7 +17,7 @@ Modified 2024-09-22 Simon Mathis (simon.mathis@cl.cam.ac.uk)
 NOTE: All code here will be executed on the PyMol server side.
 """
 
-import logging
+import io
 import os
 import socket
 import tempfile
@@ -28,28 +28,22 @@ from xmlrpc.server import SimpleXMLRPCServer
 from pymolrpc.common import (
     ALL_INTERFACES,
     LOCALHOST,
-    LOG_LEVEL,
     N_PORTS_TO_TRY,
     PYMOL_RPC_DEFAULT_PORT,
     default,
 )
 
-logger = logging.getLogger("server")
-logger.setLevel(LOG_LEVEL)
-
 try:
-    from pymol import api as pymol_api
-    from pymol import cmd as pymol_cmd
-except ImportError as e:
-    logger.error(
-        "Failed to import PyMOL API. The `server` side of the "
-        "PyMOL RPC interface requires PyMOL to be installed. "
-        "If you are using conda/mamba, you can install PyMOL with:\n"
-        "   conda install -c conda-forge pymol-open-source"
-    )
-    raise e.with_traceback(e.__traceback__)
+    from pymol import api as pymol_api  # noqa: F401
+    from pymol import cmd as pymol_cmd  # noqa: F401
+except ImportError:
+    # allow passing without pymol installed to
+    #  enable extracting the docstrings of registered
+    #  functions
+    pass
 
-_server = None
+
+_PYMOL_XMLRPC_SERVER_INSTANCE = None
 
 
 class PymolXMLRPCServer(SimpleXMLRPCServer):
@@ -113,7 +107,9 @@ def is_alive() -> bool:
     return True
 
 
-def get_state(selection: str = "(all)", state: int = -1, format: str = "pdb") -> str:
+def get_state(
+    selection: str = "(all)", state: int = -1, format: str = "pdb"
+) -> io.BytesIO | io.StringIO:
     """Get the current state of the PyMOL session as a PDB string.
 
     This function retrieves the current state of the PyMOL session, including all
@@ -130,16 +126,30 @@ def get_state(selection: str = "(all)", state: int = -1, format: str = "pdb") ->
             Supported formats: "pdb", "mol", "png", "cif"
 
     Returns:
-        str: A PDB string representing the current state of the PyMOL session.
+        io.BytesIO | io.StringIO: A BytesIO or StringIO object containing the PDB string.
     """
-    # Create a temporary file to store the PDB string
+    _ALLOWED_TEXT_FORMATS = ("pdb", "cif")
+    _ALLOWED_BINARY_FORMATS = ("png", "pkl")
+    if format not in _ALLOWED_TEXT_FORMATS + _ALLOWED_BINARY_FORMATS:
+        raise ValueError(
+            f"Format {format} not supported. Please use one of the following: {_ALLOWED_TEXT_FORMATS + _ALLOWED_BINARY_FORMATS}"
+        )
+
+    # Create a temporary file to write to
+    # (pymol does not appear to support writing to in-memory buffers)
     with tempfile.NamedTemporaryFile(
         delete=False, suffix=f".{format}"
     ) as temp_pdb_file:
         pymol_cmd.save(temp_pdb_file.name, selection, state, format)
-        with open(temp_pdb_file.name, "r") as file:
-            state_str = file.read()
-    return state_str
+
+        if format in _ALLOWED_TEXT_FORMATS:
+            with open(temp_pdb_file.name, "r") as file:
+                buffer = io.StringIO(file.read())
+        else:
+            with open(temp_pdb_file.name, "rb") as file:
+                buffer = io.BytesIO(file.read())
+
+    return buffer
 
 
 def launch_server(
@@ -168,35 +178,53 @@ def launch_server(
         The server will attempt to bind to the first available port in the range
         [port, port + n_ports_to_try - 1]. If successful, it prints the host and port information.
     """
-    print("launching server")
-    global cgo_dict, _server
-    cgo_dict = {}
+    # NOTE: We `log` with print statements to write to the pymol console (logging messsages
+    #  are not displayed to the pymol console)
+    print(f"Attempting to launch server on {hostname}:{port} ...")
+
+    try:
+        from pymol import api as pymol_api
+        from pymol import cmd as pymol_cmd
+    except ImportError as e:
+        print(
+            "Failed to import PyMOL API. The `server` side of the "
+            "PyMOL RPC interface requires PyMOL to be installed. "
+            "Double check that `pymol` and `pymolrpc` are installed in "
+            "the same python environment."
+        )
+        raise e.with_traceback(e.__traceback__)
+
+    global _PYMOL_XMLRPC_SERVER_INSTANCE
+
     for i in range(n_ports_to_try):
         try:
-            _server = PymolXMLRPCServer(hostname, port + i)
-            # _server = SimpleXMLRPCServer(
-            #     (hostname, port + i), logRequests=0, allow_none=True
-            # )
+            _PYMOL_XMLRPC_SERVER_INSTANCE = PymolXMLRPCServer(hostname, port + i)
         except Exception as e:  # noqa: E722
-            _server = None
-            print(e)
+            _PYMOL_XMLRPC_SERVER_INSTANCE = None
+            print(f"Warning: Failed to launch server on {hostname}:{port + i}: {e}")
         else:
             break
 
-    if _server:
+    if _PYMOL_XMLRPC_SERVER_INSTANCE:
         ip_address = (
             _get_local_ip() if hostname in (LOCALHOST, ALL_INTERFACES) else hostname
         )
 
         # register pymol built-ins
-        _server.register_instance(pymol_cmd)
-        _server.register_function(pymol_api.count_atoms, "count_atoms")
+        _PYMOL_XMLRPC_SERVER_INSTANCE.register_instance(pymol_cmd)
+        _PYMOL_XMLRPC_SERVER_INSTANCE.register_function(
+            pymol_api.count_atoms, "count_atoms"
+        )
 
         # register custom functions
-        _server.register_function(is_alive, "is_alive")
-        _server.register_function_with_kwargs(get_state, "get_state")
-        _server.register_introspection_functions()
-        server_thread = threading.Thread(target=_server.serve_forever)
+        _PYMOL_XMLRPC_SERVER_INSTANCE.register_function(is_alive, "is_alive")
+        _PYMOL_XMLRPC_SERVER_INSTANCE.register_function_with_kwargs(
+            get_state, "get_state"
+        )
+        _PYMOL_XMLRPC_SERVER_INSTANCE.register_introspection_functions()
+        server_thread = threading.Thread(
+            target=_PYMOL_XMLRPC_SERVER_INSTANCE.serve_forever
+        )
         server_thread.daemon = True
         server_thread.start()
 
