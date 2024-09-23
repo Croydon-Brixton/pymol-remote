@@ -109,7 +109,7 @@ def is_alive() -> bool:
 
 def get_state(
     selection: str = "(all)", state: int = -1, format: str = "pdb"
-) -> io.BytesIO | io.StringIO:
+) -> str | bytes:
     """Get the current state of the PyMOL session as a PDB string.
 
     This function retrieves the current state of the PyMOL session, including all
@@ -126,7 +126,7 @@ def get_state(
             Supported formats: "pdb", "mol", "png", "cif"
 
     Returns:
-        io.BytesIO | io.StringIO: A BytesIO or StringIO object containing the PDB string.
+        str | bytes: The PDB string or binary file content.
     """
     _ALLOWED_TEXT_FORMATS = ("pdb", "cif")
     _ALLOWED_BINARY_FORMATS = ("png", "pkl")
@@ -144,11 +144,10 @@ def get_state(
 
         if format in _ALLOWED_TEXT_FORMATS:
             with open(temp_pdb_file.name, "r") as file:
-                buffer = io.StringIO(file.read())
+                buffer = file.read()
         else:
             with open(temp_pdb_file.name, "rb") as file:
-                buffer = io.BytesIO(file.read())
-
+                buffer = file.read()
     return buffer
 
 
