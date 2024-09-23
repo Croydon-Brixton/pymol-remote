@@ -6,7 +6,7 @@
 
 ## 1. Installation
 ```bash
-pip install git+https://github.com/Croydon-Brixton/pymol-remote.git
+pip install pymol-remote
 ```
 
 ## 2. Usage
