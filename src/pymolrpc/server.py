@@ -59,7 +59,7 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
             use_builtin_types=True,
         )
 
-    def register_function_with_kwargs(self, func: Callable, name: str = None):
+    def register_function(self, func: Callable, name: str = None):
         """
         Register a function with the server while enabling keyword arguments.
 
@@ -71,7 +71,7 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
             - https://stackoverflow.com/questions/119802/using-kwargs-with-simplexmlrpcserver-in-python
         """
 
-        def _function(args: list = [], kwargs: dict = {}):
+        def _function(args: list, kwargs: dict = {}):
             return func(*args, **kwargs)
 
         _function.__name__ = func.__name__
@@ -280,13 +280,11 @@ def launch_server(
             # Register functions directly from the pymol_api module
             #  to expose the docstrings
             if callable(func) and not name.startswith("_"):
-                _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(func, name)
+                _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(func, name)
 
         # register custom functions
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(is_alive, "is_alive")
-        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(
-            get_state, "get_state"
-        )
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(get_state, "get_state")
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(help, "help")
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_introspection_functions()
         server_thread = threading.Thread(
