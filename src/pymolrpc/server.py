@@ -22,6 +22,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 from pymolrpc.common import (
     ALL_INTERFACES,
+    LOCALHOST,
     LOG_LEVEL,
     N_PORTS_TO_TRY,
     PYMOL_RPC_DEFAULT_PORT,
@@ -113,7 +114,9 @@ def launch_server(
             break
 
     if _server:
-        ip_address = get_local_ip() if hostname == "localhost" else hostname
+        ip_address = (
+            get_local_ip() if hostname in (LOCALHOST, ALL_INTERFACES) else hostname
+        )
 
         # register pymol built-ins
         _server.register_instance(pymol_cmd)
