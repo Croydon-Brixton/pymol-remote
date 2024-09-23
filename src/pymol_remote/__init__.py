@@ -1,3 +1,13 @@
+"""
+Launch PyMOL with RPC server (and any other pymol args)
+
+License:  PyMol
+
+NOTE: This code is run on the PyMOL server side (where you are running PyMOL).
+Execute it with the command `pymol_remote` after installing the package.
+"""
+
+
 def launch_pymol_with_rpc(args=None, block_input_hook=0):
     """Launch PyMOL with RPC server (and any other pymol args)
 
@@ -15,7 +25,7 @@ def launch_pymol_with_rpc(args=None, block_input_hook=0):
         args = sys.argv
     invocation.parse_args(args)
     invocation.options.deferred.append(
-        "_do__ /import pymolrpc.server;pymolrpc.server.launch_server()"
+        "_do__ /import pymol_remote.server;pymol_remote.server.launch_server()"
     )
 
     if invocation.options.gui == "pmg_qt":

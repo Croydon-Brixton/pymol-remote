@@ -1,14 +1,15 @@
 # General project settings ------------------------------------------------------------
 [project]
-name = "pymolrpc"
+name = "pymol_remote"
 readme = "README.md"
 dynamic = ["version"]
+license = "license.txt"
 dependencies = []
 
 
 # Scripts ---------------------------------------------------------------------------
 [project.scripts]
-pymol_rpc = "pymolrpc:launch_pymol_with_rpc"
+pymol_remote = "pymol_remote:launch_pymol_with_rpc"
 
 
 # Build settings ----------------------------------------------------------------------
@@ -23,7 +24,7 @@ build-backend = "hatchling.build"
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "src/pymolrpc/version.py"
+version-file = "src/pymol_remote/version.py"
 
 
 # Formatting & linting settings -------------------------------------------------------

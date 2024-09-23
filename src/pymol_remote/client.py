@@ -1,21 +1,20 @@
-# $Id$
-#
-# Copyright (C) 2004-2012 Greg Landrum and Rational Discovery LLC
-#
-#   @@ All Rights Reserved @@
-#  This file is part of the RDKit.
-#  The contents are covered by the terms of the BSD license
-#  which is included in the file license.txt, found at the root
-#  of the RDKit source tree.
-#
-"""uses pymol to interact with molecules"""
+"""
+A client for the PyMOL RPC server.
+
+# NOTE: All code here will be executed on the client side (where you are running python & this file)
+"""
 
 import logging
 import socket
 from http.client import HTTPConnection
 from xmlrpc.client import ServerProxy, Transport
 
-from pymolrpc.common import LOG_LEVEL, PYMOL_RPC_DEFAULT_PORT, PYMOL_RPC_HOST, exists
+from pymol_remote.common import (
+    LOG_LEVEL,
+    PYMOL_RPC_DEFAULT_PORT,
+    PYMOL_RPC_HOST,
+    exists,
+)
 
 logger = logging.getLogger("client")
 logger.setLevel(LOG_LEVEL)
@@ -40,6 +39,47 @@ class TimeoutTransport(Transport):
 
 
 class PymolSession(object):
+    """
+    A class for interacting with a PyMOL RPC server, which allows you to execute PyMOL commands
+    and retrieve information from a running PyMOL session (possibly running on a remote machine
+    on the same network).
+
+    You can find more information about the available commands here:
+        - https://pymol.org/pymol-command-ref.html
+        - https://pymolwiki.org/index.php/Category:Commands
+
+    You can invoke all pymol commands using direclty as methods on this object.
+    For example:
+
+    ```python
+    >>> session.fetch('6lyz')
+    >>> session.get_names()
+    ```
+
+    You may also use any command that can be called in the pymol console with the `do` method.
+    For example:
+
+    ```python
+    >>> session.do('set valence, on')
+    ```
+
+    To get the current state of the pymol session from the server, you can use the `get_state` method.
+    For example:
+
+    ```python
+    session.get_state(selection="(all)", state=-1, format="cif")
+    session.get_state(selection="(all)", state=-1, format="pdb")
+    ```
+
+    To get help with a specific command, you can use the `help` method.
+    For example:
+
+    ```python
+    >>> session.help('fetch')  # get help for the fetch command
+    >>> session.help()  # get a list of all available commands
+    ```
+    """
+
     def __init__(
         self,
         hostname: str = PYMOL_RPC_HOST,
@@ -139,12 +179,11 @@ class PymolSession(object):
     def __repr__(self):
         attrs = f"hostname={self.hostname!r}, port={self.port!r}"
         class_name = self.__class__.__name__
-        header = f"{class_name}({attrs})"
-        docs = self.docs().replace("\n", "\n" + " " * 4)
-        return f"{header}\n\n{docs}"
+        repr_str = f"{class_name}({attrs}) at {hex(id(self))}"
+        return repr_str
 
     def print_help(self):
-        print(self.docs())
+        print(self.__doc__)
 
     def help(self, command: str | None = None):
         if command is None:
@@ -155,46 +194,24 @@ class PymolSession(object):
             help_str += "```\n"
             help_str += "\n"
             help_str += (
-                "To get links to more documentation, call `print(session.docs())`.\n"
+                "To get links to more documentation, call `session.print_help()`.\n"
             )
             help_str += "Available commands:\n"
             # Parse string encoding a `list[str]` into a list of strings
-            available_commands = self._server.help([])
-            # ... remove the first and last characters of the string
-            available_commands = available_commands[1:-1]
-            # ... split the string into a list of strings
-            available_commands = available_commands.split(", ")
+            available_commands = sorted(self._server.system.listMethods())
+            # ... remove any system.* commands
+            available_commands = [
+                command
+                for command in available_commands
+                if not command.startswith("system.")
+            ]
+            # ... remove any capitalized commands
+            available_commands = [
+                command for command in available_commands if not command[0].isupper()
+            ]
             help_str += "\n  -"
             help_str += "\n  -".join(available_commands)
 
             print(help_str)
         else:
             print(self._server.help([command]))
-
-    def docs(self) -> str:
-        help_str = "You can find more information about the available commands here:\n"
-        help_str += " - https://pymol.org/pymol-command-ref.html\n"
-        help_str += " - https://pymolwiki.org/index.php/Category:Commands\n"
-        help_str += "\n"
-        help_str += "You can invoke all pymol commands using direclty as methods on this object.\n"
-        help_str += "For example:\n\n"
-        help_str += "```\n"
-        help_str += "session.fetch('6lyz')\n"
-        help_str += "session.get_names()\n"
-        help_str += "```\n"
-        help_str += "\n"
-        help_str += "You may also use any command that can be called in the pymol console with the `do` method.\n"
-        help_str += "For example:\n\n"
-        help_str += "```\n"
-        help_str += "session.do('set valence, on')\n"
-        help_str += "```\n"
-        help_str += "\n"
-        help_str += "To get the current state of the pymol session from the server, you can use the `get_state` method.\n"
-        help_str += "For example:\n\n"
-        help_str += "```\n"
-        help_str += "session.get_state(selection='(all)', state=-1, format='cif')\n"
-        help_str += "session.get_state(selection='(all)', state=-1, format='pdb')\n"
-        help_str += "```\n"
-        help_str += "\n"
-
-        return help_str

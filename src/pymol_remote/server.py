@@ -1,20 +1,9 @@
-"""An XML-RPC server to allow remote control of PyMol
+"""
+An XML-RPC server to allow remote control of PyMol.
 
-Author: Greg Landrum (glandrum@users.sourceforge.net)
-Created:       January 2002
-$LastChangedDate$
 License:  PyMol
-Requires:
-          - a python xmlrpclib distribution containing the SimpleXMLRPCServer
-            module (1.0 or greater should be fine)
-          - python with threading enabled
 
-RD Version: $Rev$
-
-Modified 2013-04-17 Thomas Holder, Schrodinger, Inc.
-Modified 2024-09-22 Simon Mathis (simon.mathis@cl.cam.ac.uk)
-
-NOTE: All code here will be executed on the PyMol server side.
+NOTE: All code here will be executed on the PyMol server side (where you are running PyMol)
 """
 
 import inspect
@@ -25,7 +14,7 @@ import threading
 from typing import Callable
 from xmlrpc.server import SimpleXMLRPCServer
 
-from pymolrpc.common import (
+from pymol_remote.common import (
     ALL_INTERFACES,
     LOCALHOST,
     N_PORTS_TO_TRY,
@@ -126,16 +115,16 @@ def is_alive() -> bool:
 def get_state(
     selection: str = "(all)", state: int = -1, format: str = "pdb"
 ) -> str | bytes:
-    """Get the current state of the PyMOL session as a PDB string.
+    """Get the current state of the PyMOL session in the requested format (e.g. pdb string)
 
     This function retrieves the current state of the PyMOL session, including all
     molecules, their coordinates, and other relevant information, and returns it
-    as a PDB string.
+    in the requested format.
 
     Args:
-        - selection (str, optional): The selection of atoms to include in the PDB string.
+        - selection (str, optional): The selection of atoms to include in the output.
             Defaults to "all".
-        - state (int, optional): The state of the molecule to include in the PDB string.
+        - state (int, optional): The state of the molecule to include in the output.
             Defaults to `-1`, which means the current state. If state is 0, then
             a multi-state output file is written.
         - format (str, optional): The format of the file to save. Defaults to "pdb".
@@ -254,7 +243,7 @@ def launch_server(
         print(
             "Failed to import PyMOL API. The `server` side of the "
             "PyMOL RPC interface requires PyMOL to be installed. "
-            "Double check that `pymol` and `pymolrpc` are installed in "
+            "Double check that `pymol` and `pymol_remote` are installed in "
             "the same python environment."
         )
         raise e.with_traceback(e.__traceback__)
@@ -300,5 +289,11 @@ def launch_server(
         # Log output to pymol console to help user find the server
         print(f"xml-rpc server running on host {hostname}, port {port + i}")
         print(f"Likely IP address: {ip_address}")
+        print(
+            "Ensure you can ping this address from your client machine (where you will "
+            " run your python code).\n"
+            "If it does not work, you might need to use commands like `ifconfig` or `ipconfig` on your "
+            "client machine to find the correct IP address of the server in your local network."
+        )
     else:
         print("xml-rpc server could not be started.")
