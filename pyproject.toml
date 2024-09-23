@@ -1,9 +1,12 @@
 # General project settings ------------------------------------------------------------
 [project]
 name = "pymol_remote"
+authors = [
+    { name="Simon Mathis", email="simon.mathis@gmail.com" },
+]
 readme = "README.md"
 dynamic = ["version"]
-license = "license.txt"
+license = {file = "license.txt"}
 dependencies = []
 
 
