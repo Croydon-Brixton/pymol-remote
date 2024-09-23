@@ -116,7 +116,7 @@ def is_alive() -> bool:
     It's a simple way to test the connection between the client and the server.
 
     Returns:
-        int: Always returns 1 to indicate the server is alive and functioning.
+        bool: Always returns True to indicate the server is alive and functioning.
     """
     return True
 
@@ -180,7 +180,14 @@ def help(command: str | None = None) -> str:
 
     if command is None:
         # Return list of available commands
-        return str(list(_GLOBAL_PYMOL_XMLRPC_SERVER.funcs.keys()))
+        available_commands = list(_GLOBAL_PYMOL_XMLRPC_SERVER.funcs.keys())
+        # Remove the `system.` commands
+        available_commands = [
+            command
+            for command in available_commands
+            if not command.startswith("system.")
+        ]
+        return str(available_commands)
 
     funcs = _GLOBAL_PYMOL_XMLRPC_SERVER.funcs
     if command not in funcs:
@@ -268,9 +275,12 @@ def launch_server(
 
         # register pymol built-ins
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_instance(pymol_cmd)
-        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(
-            pymol_api.count_atoms, "count_atoms"
-        )
+
+        for name, func in pymol_api.__dict__.items():
+            # Register functions directly from the pymol_api module
+            #  to expose the docstrings
+            if callable(func) and not name.startswith("_"):
+                _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(func, name)
 
         # register custom functions
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(is_alive, "is_alive")

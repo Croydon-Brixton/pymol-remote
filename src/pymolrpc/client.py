@@ -54,14 +54,13 @@ class PymolSession(object):
             - hostname (str): The hostname of the PyMol RPC server. Defaults to PYMOL_RPC_HOST.
             - port (int): The port number of the PyMol RPC server. Defaults to PYMOL_RPC_DEFAULT_PORT.
             - force_new (bool): If True, forces the creation of a new server connection. Defaults to False.
-            - timeout (float): The timeout duration in seconds for the server connection. Defaults to 10 seconds.
+            - timeout (float): The timeout duration in seconds for the server connection. Defaults to 10 10.18.178.186seconds.
 
         Raises:
             - RuntimeError: If the connection to the PyMol RPC server fails.
             - TimeoutError: If the connection to the PyMol RPC server times out. Usually an indication that
                 the server cannot be `pinged` from the terminal.
         """
-        logger.info(f"Initializing PymolSession with `{hostname}:{port}`")
         self.hostname = hostname
         self.port = port
         global _GLOBAL_SERVER_PROXY
