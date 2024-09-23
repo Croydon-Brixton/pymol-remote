@@ -17,7 +17,6 @@ Modified 2024-09-22 Simon Mathis (simon.mathis@cl.cam.ac.uk)
 NOTE: All code here will be executed on the PyMol server side.
 """
 
-import io
 import os
 import socket
 import tempfile
@@ -31,6 +30,7 @@ from pymolrpc.common import (
     N_PORTS_TO_TRY,
     PYMOL_RPC_DEFAULT_PORT,
     default,
+    exists,
 )
 
 try:
@@ -43,7 +43,7 @@ except ImportError:
     pass
 
 
-_PYMOL_XMLRPC_SERVER_INSTANCE = None
+_GLOBAL_PYMOL_XMLRPC_SERVER = None
 
 
 class PymolXMLRPCServer(SimpleXMLRPCServer):
@@ -79,7 +79,21 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
         super().register_function(_function, default(name, func.__name__))
 
 
-def _get_local_ip():
+def _get_local_ip() -> str:
+    """
+    Attempts to retrieve the local IP address of the machine.
+
+    This function creates a UDP socket and connects to an external server (8.8.8.8)
+    to determine the local IP address. If successful, it returns the IP address.
+    If an exception occurs, it returns a string with instructions for manual IP retrieval.
+
+    Returns:
+        str: The local IP address if successful, or an instruction message if an error occurs.
+
+    Note:
+        This method may not work in all network configurations, especially in complex
+        or restricted network environments.
+    """
     try:
         # Create a socket and connect to an external server
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -151,6 +165,48 @@ def get_state(
     return buffer
 
 
+def help(command: str | None = None):
+    """Provide help information for PyMOL XML-RPC server functions.
+
+    This function returns information about available functions or detailed help for a specific function.
+
+    Args:
+        - what (str, optional): The name of the function to get help for. If empty, returns a list of all available
+            functions. Defaults to an empty string.
+
+    Returns:
+        str: A string containing either a list of all available functions or detailed information about a specific
+        function, including its signature and docstring if available.
+    """
+    global _GLOBAL_PYMOL_XMLRPC_SERVER
+    help_result = "Command Not Found"
+    if not exists(command):
+        # Return list of available commands
+        help_result = list(_GLOBAL_PYMOL_XMLRPC_SERVER.funcs.keys())
+    else:
+        # Return more detailed help for a specific command
+        funcs = _GLOBAL_PYMOL_XMLRPC_SERVER.funcs
+        if command in funcs:
+            fn = funcs[command]
+            help_result = "Function: %s(" % command
+            defs = fn.__defaults__
+            if defs:
+                code = fn.__code__
+                nDefs = len(defs)
+                args = []
+            i = -1
+            for i in range(code.co_argcount - nDefs):
+                args.append(code.co_varnames[i])
+            for j in range(nDefs):
+                vName = code.co_varnames[j + i + 1]
+                args.append("%s=%s" % (vName, repr(defs[j])))
+            help_result += ",".join(args)
+            help_result += ")\n"
+            if fn.__doc__:
+                help_result += fn.__doc__
+    return help_result
+
+
 def launch_server(
     hostname: str = os.getenv("PYMOL_RPCHOST", ALL_INTERFACES),
     port: int = os.getenv("PYMOL_RPC_PORT", PYMOL_RPC_DEFAULT_PORT),
@@ -176,6 +232,10 @@ def launch_server(
     Note:
         The server will attempt to bind to the first available port in the range
         [port, port + n_ports_to_try - 1]. If successful, it prints the host and port information.
+
+    Reference:
+        - https://github.com/schrodinger/pymol-open-source/blob/9d3061ca58d8b69d7dad74a68fc13fe81af0ff8e/modules/pymol/rpc.py
+        - https://pymolwiki.org/index.php/XML-RPC_server
     """
     # NOTE: We `log` with print statements to write to the pymol console (logging messsages
     #  are not displayed to the pymol console)
@@ -193,36 +253,37 @@ def launch_server(
         )
         raise e.with_traceback(e.__traceback__)
 
-    global _PYMOL_XMLRPC_SERVER_INSTANCE
+    global _GLOBAL_PYMOL_XMLRPC_SERVER
 
     for i in range(n_ports_to_try):
         try:
-            _PYMOL_XMLRPC_SERVER_INSTANCE = PymolXMLRPCServer(hostname, port + i)
+            _GLOBAL_PYMOL_XMLRPC_SERVER = PymolXMLRPCServer(hostname, port + i)
         except Exception as e:  # noqa: E722
-            _PYMOL_XMLRPC_SERVER_INSTANCE = None
+            _GLOBAL_PYMOL_XMLRPC_SERVER = None
             print(f"Warning: Failed to launch server on {hostname}:{port + i}: {e}")
         else:
             break
 
-    if _PYMOL_XMLRPC_SERVER_INSTANCE:
+    if _GLOBAL_PYMOL_XMLRPC_SERVER:
         ip_address = (
             _get_local_ip() if hostname in (LOCALHOST, ALL_INTERFACES) else hostname
         )
 
         # register pymol built-ins
-        _PYMOL_XMLRPC_SERVER_INSTANCE.register_instance(pymol_cmd)
-        _PYMOL_XMLRPC_SERVER_INSTANCE.register_function(
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_instance(pymol_cmd)
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(
             pymol_api.count_atoms, "count_atoms"
         )
 
         # register custom functions
-        _PYMOL_XMLRPC_SERVER_INSTANCE.register_function(is_alive, "is_alive")
-        _PYMOL_XMLRPC_SERVER_INSTANCE.register_function_with_kwargs(
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(is_alive, "is_alive")
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(
             get_state, "get_state"
         )
-        _PYMOL_XMLRPC_SERVER_INSTANCE.register_introspection_functions()
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(help, "help")
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_introspection_functions()
         server_thread = threading.Thread(
-            target=_PYMOL_XMLRPC_SERVER_INSTANCE.serve_forever
+            target=_GLOBAL_PYMOL_XMLRPC_SERVER.serve_forever
         )
         server_thread.daemon = True
         server_thread.start()
@@ -231,4 +292,4 @@ def launch_server(
         print(f"xml-rpc server running on host {hostname}, port {port + i}")
         print(f"Likely IP address: {ip_address}")
     else:
-        print("xml-rpc server could not be started")
+        print("xml-rpc server could not be started.")
