@@ -15,15 +15,16 @@ Modified 2013-04-17 Thomas Holder, Schrodinger, Inc.
 """
 
 import logging
-import threading
+import os
 import socket
+import threading
 from xmlrpc.server import SimpleXMLRPCServer
 
 from pymolrpc.common import (
+    ALL_INTERFACES,
     LOG_LEVEL,
     N_PORTS_TO_TRY,
     PYMOL_RPC_DEFAULT_PORT,
-    PYMOL_RPC_HOST,
 )
 
 logger = logging.getLogger("server")
@@ -52,7 +53,7 @@ def get_local_ip():
         local_ip = s.getsockname()[0]
         s.close()
         return local_ip
-    except Exception as e:
+    except Exception:
         return (
             "IP Address could not be inferred. "
             "Try checking `ifconfig` or `ipconfig` on Linux or MacOS, "
@@ -73,7 +74,9 @@ def is_alive() -> bool:
 
 
 def launch_server(
-    hostname=PYMOL_RPC_HOST, port=PYMOL_RPC_DEFAULT_PORT, n_ports_to_try=N_PORTS_TO_TRY
+    hostname: str = os.getenv("PYMOL_RPCHOST", ALL_INTERFACES),
+    port: int = os.getenv("PYMOL_RPC_PORT", PYMOL_RPC_DEFAULT_PORT),
+    n_ports_to_try: int = os.getenv("PYMOL_RPC_N_PORTS_TO_TRY", N_PORTS_TO_TRY),
 ):
     """Launches the XML-RPC server in a separate thread.
 
@@ -124,7 +127,7 @@ def launch_server(
         server_thread.daemon = True
         server_thread.start()
         logger.info("xml-rpc server running on host %s, port %d" % (hostname, port + i))
-        print(f"xml-rpc server running on host {ip_address}, port {port + i}")
+        print(f"xml-rpc server running on host {hostname}, port {port + i}")
         print(f"Likely IP address: {ip_address}")
     else:
         print("xml-rpc server could not be started")
@@ -161,7 +164,9 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
 
 class PymolXMLRPCInterface:
     def __init__(
-        self, hostname: str = PYMOL_RPC_HOST, port: int = PYMOL_RPC_DEFAULT_PORT
+        self,
+        hostname: str = os.getenv("PYMOL_RPCHOST", ALL_INTERFACES),
+        port: int = os.getenv("PYMOL_RPC_PORT", PYMOL_RPC_DEFAULT_PORT),
     ):
         self.hostname = hostname
         self.port = port
