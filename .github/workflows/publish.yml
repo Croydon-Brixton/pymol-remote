@@ -26,4 +26,4 @@ jobs:
       - name: publish
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: hatch publish pypi --strict
+        run: hatch publish pypi --token $PYPI_TOKEN --strict
