@@ -59,7 +59,7 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
         port: int,
     ):
         super().__init__(
-            address=(hostname, port),
+            addr=(hostname, port),
             logRequests=False,
             allow_none=True,
             use_builtin_types=True,
