@@ -1,12 +1,14 @@
 # General project settings ------------------------------------------------------------
 [project]
 name = "pymolrpc"
-version = "0.0.1"
 readme = "README.md"
 dynamic = ["version"]
-
-# Dependencies ----------------------------------------------------------------------
 dependencies = []
+
+
+# Scripts ---------------------------------------------------------------------------
+[project.scripts]
+pymol_rpc = "pymolrpc:launch_pymol_with_rpc"
 
 
 # Build settings ----------------------------------------------------------------------
