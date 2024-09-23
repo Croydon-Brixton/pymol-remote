@@ -187,7 +187,7 @@ def help(command: str | None = None) -> str:
             for command in available_commands
             if not command.startswith("system.")
         ]
-        return str(available_commands)
+        return str(sorted(available_commands))
 
     funcs = _GLOBAL_PYMOL_XMLRPC_SERVER.funcs
     if command not in funcs:
