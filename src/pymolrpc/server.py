@@ -157,7 +157,7 @@ def launch_server(
 
         # register custom functions
         _server.register_function(is_alive, "is_alive")
-
+        _server.register_function(get_state, "get_state")
         _server.register_introspection_functions()
         server_thread = threading.Thread(target=_server.serve_forever)
         server_thread.daemon = True
