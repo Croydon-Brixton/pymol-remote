@@ -11,14 +11,32 @@
 """uses pymol to interact with molecules"""
 
 import logging
-from xmlrpc.client import ServerProxy
+import socket
+from http.client import HTTPConnection
+from xmlrpc.client import ServerProxy, Transport
 
-from pymolrpc.common import PYMOL_RPC_DEFAULT_PORT, PYMOL_RPC_HOST, exists
+from pymolrpc.common import LOG_LEVEL, PYMOL_RPC_DEFAULT_PORT, PYMOL_RPC_HOST, exists
 
 logger = logging.getLogger("client")
+logger.setLevel(LOG_LEVEL)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+)
+logger.addHandler(handler)
 
 
 _GLOBAL_SERVER_PROXY = None
+
+
+class TimeoutTransport(Transport):
+    def __init__(self, timeout):
+        self.timeout = timeout
+        super().__init__()
+
+    def make_connection(self, host: str):
+        conn = HTTPConnection(host, timeout=self.timeout)
+        return conn
 
 
 class PymolSession(object):
@@ -27,19 +45,48 @@ class PymolSession(object):
         hostname: str = PYMOL_RPC_HOST,
         port: int = PYMOL_RPC_DEFAULT_PORT,
         force_new: bool = False,
+        timeout: float = 10.0,  # Default timeout of 10 seconds
     ):
+        """
+        Initializes a PymolSession object to interact with a PyMol RPC server.
+
+        Args:
+            - hostname (str): The hostname of the PyMol RPC server. Defaults to PYMOL_RPC_HOST.
+            - port (int): The port number of the PyMol RPC server. Defaults to PYMOL_RPC_DEFAULT_PORT.
+            - force_new (bool): If True, forces the creation of a new server connection. Defaults to False.
+            - timeout (float): The timeout duration in seconds for the server connection. Defaults to 10 seconds.
+
+        Raises:
+            - RuntimeError: If the connection to the PyMol RPC server fails.
+            - TimeoutError: If the connection to the PyMol RPC server times out. Usually an indication that
+                the server cannot be `pinged` from the terminal.
+        """
+        logger.info(f"Initializing PymolSession with `{hostname}:{port}`")
         self.hostname = hostname
         self.port = port
         global _GLOBAL_SERVER_PROXY
         if force_new or not exists(_GLOBAL_SERVER_PROXY):
+            logger.info(f"Connecting to PyMol RPC server at `{hostname}:{port}`")
             _GLOBAL_SERVER_PROXY = None
-            server = ServerProxy(f"http://{hostname}:{port}")
-            if not server.is_alive():
-                raise RuntimeError(
-                    f"Failed to connect to PyMol RPC server at `{hostname}:{port}`."
-                    " Did you start the server already? Can you ping the host from"
-                    " the terminal?"
+
+            # Create a ServerProxy with a custom Transport that includes a timeout
+            transport = TimeoutTransport(timeout)
+            server = ServerProxy(f"http://{hostname}:{port}", transport=transport)
+
+            try:
+                if not server.is_alive():
+                    raise RuntimeError(
+                        f"Failed to connect to PyMol RPC server at `{hostname}:{port}`."
+                        " Did you start the server already? Can you ping the host from"
+                        " the terminal?"
+                    )
+            except socket.timeout:
+                raise TimeoutError(
+                    f"Connection to PyMol RPC server at `{hostname}:{port}` timed out after {timeout} seconds."
                 )
+            except Exception as e:
+                raise RuntimeError(f"Error connecting to PyMol RPC server: {str(e)}")
+
             _GLOBAL_SERVER_PROXY = server
             self._server = server
         else:
