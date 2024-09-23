@@ -217,3 +217,6 @@ class PymolXMLRPCInterface:
 
     def load_example(self):
         pymol_cmd.load("1ubq")
+
+    def get_state(self, selection: str = "(all)", state: int = -1, format: str = "pdb"):
+        return get_state(selection, state, format)
