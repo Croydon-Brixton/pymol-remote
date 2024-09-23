@@ -71,7 +71,7 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
             - https://stackoverflow.com/questions/119802/using-kwargs-with-simplexmlrpcserver-in-python
         """
 
-        def _function(args: list, kwargs: dict):
+        def _function(args: list = [], kwargs: dict = {}):
             return func(*args, **kwargs)
 
         _function.__name__ = func.__name__
