@@ -17,6 +17,7 @@ Modified 2024-09-22 Simon Mathis (simon.mathis@cl.cam.ac.uk)
 NOTE: All code here will be executed on the PyMol server side.
 """
 
+import inspect
 import os
 import socket
 import tempfile
@@ -30,7 +31,6 @@ from pymolrpc.common import (
     N_PORTS_TO_TRY,
     PYMOL_RPC_DEFAULT_PORT,
     default,
-    exists,
 )
 
 try:
@@ -165,53 +165,50 @@ def get_state(
     return buffer
 
 
-def help(command: str | None = None):
+def help(command: str | None = None) -> str:
     """Provide help information for PyMOL XML-RPC server functions.
 
-    This function returns information about available functions or detailed help for a specific function.
-
     Args:
-        - what (str, optional): The name of the function to get help for. If empty, returns a list of all available
-            functions. Defaults to an empty string.
+        - command (str | None, optional): The name of the function to get help for.
+          If None, returns a list of all available functions. Defaults to None.
 
     Returns:
-        str: A string containing either a list of all available functions or detailed information about a specific
-        function, including its signature and docstring if available.
+        str: A string containing either a list of all available functions or detailed
+        information about a specific function, including its signature and docstring if available.
     """
     global _GLOBAL_PYMOL_XMLRPC_SERVER
-    help_result = "Command Not Found"
-    if not exists(command):
+
+    if command is None:
         # Return list of available commands
-        help_result = list(_GLOBAL_PYMOL_XMLRPC_SERVER.funcs.keys())
-    else:
-        # Return more detailed help for a specific command
-        funcs = _GLOBAL_PYMOL_XMLRPC_SERVER.funcs
-        if command in funcs:
-            fn = funcs[command]
-            help_result = "Function: %s(" % command
-            defs = fn.__defaults__
-            if defs:
-                code = fn.__code__
-                nDefs = len(defs)
-                args = []
-            i = -1
-            for i in range(code.co_argcount - nDefs):
-                args.append(code.co_varnames[i])
-            for j in range(nDefs):
-                vName = code.co_varnames[j + i + 1]
-                args.append("%s=%s" % (vName, repr(defs[j])))
-            help_result += ",".join(args)
-            help_result += ")\n"
-            if fn.__doc__:
-                help_result += fn.__doc__
-    return help_result
+        return str(list(_GLOBAL_PYMOL_XMLRPC_SERVER.funcs.keys()))
+
+    funcs = _GLOBAL_PYMOL_XMLRPC_SERVER.funcs
+    if command not in funcs:
+        return "Command Not Found"
+
+    fn = funcs[command]
+    signature = _get_function_signature(fn, command)
+    docstring = fn.__doc__ or ""
+
+    return f"{signature}\n{docstring:>4}"
+
+
+def _get_function_signature(fn: Callable, command: str) -> str:
+    """Generate a function signature string using inspect.signature."""
+    try:
+        # Using inspect.signature to get a more accurate and formatted function signature
+        sig = inspect.signature(fn)
+        return f"{command}{sig}"
+    except ValueError:
+        # Fallback if inspect.signature fails to retrieve the signature
+        return f"{command}(...)"
 
 
 def launch_server(
     hostname: str = os.getenv("PYMOL_RPCHOST", ALL_INTERFACES),
     port: int = os.getenv("PYMOL_RPC_PORT", PYMOL_RPC_DEFAULT_PORT),
     n_ports_to_try: int = os.getenv("PYMOL_RPC_N_PORTS_TO_TRY", N_PORTS_TO_TRY),
-):
+) -> None:
     """Launches the XML-RPC server in a separate thread.
 
     This function initializes and starts an XML-RPC server for PyMOL, allowing remote
@@ -280,7 +277,7 @@ def launch_server(
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(
             get_state, "get_state"
         )
-        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(help, "help")
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function(help, "help")
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_introspection_functions()
         server_thread = threading.Thread(
             target=_GLOBAL_PYMOL_XMLRPC_SERVER.serve_forever
