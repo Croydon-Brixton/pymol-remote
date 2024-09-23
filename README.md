@@ -1,13 +1,20 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![PyPI](https://img.shields.io/pypi/v/pymol-remote)](https://pypi.org/project/pymol-remote/)
+[![PyPI](https://img.shields.io/pypi/v/pymol-remote?color=blue)](https://pypi.org/project/pymol-remote/)
 # PyMOL Remote
 > A simple RPC client for sending commands and data between Python and PyMOL.
 (RPC = Remote Procedure Call)
 
+![Screenshot of pymol with pymol-remote](./assets/screenshot.png)
+
 ## 1. Installation
+`pymol-remote` has no dependencies beyond the base Python standard library, so installation is straightforward:
 ```bash
 pip install pymol-remote
 ```
+
+On the server side, you need to have a working `pymol` installation. Whichever python interpreter you are using to run `pymol` should also have `pymol-remote` installed (or needs to have `pymol-remote` in its pythonpath). The easiest way to do this is to [install `pymol` via `conda`](https://pymol.org/conda/) into an existing or new environment and then install `pymol-remote` in the same environment with `pip install pymol-remote`.
+
+On the client side, you need to have a working Python environment with `pymol-remote` installed.
 
 ## 2. Usage
 ### 2.1 Server side (where PyMOL is running)
@@ -35,7 +42,7 @@ from pymol_remote.client import PymolSession
 #  if it doesn't work you might need to use commands like `ifconfig` or `ipconfig` on
 #  your computer to find the correct IP address of the server in your local network.
 pymol = PymolSession(hostname="ip_address_of_server", port=9123)
-
+ 
 # You can now send commands to PyMOL
 pymol.fetch("6lyz")
 pymol.do("remove solvent")
