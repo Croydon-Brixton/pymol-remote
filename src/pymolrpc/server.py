@@ -1,4 +1,4 @@
-"""an XML-RPC server to allow remote control of PyMol
+"""An XML-RPC server to allow remote control of PyMol
 
 Author: Greg Landrum (glandrum@users.sourceforge.net)
 Created:       January 2002
@@ -12,11 +12,15 @@ Requires:
 RD Version: $Rev$
 
 Modified 2013-04-17 Thomas Holder, Schrodinger, Inc.
+Modified 2024-09-22 Simon Mathis (simon.mathis@cl.cam.ac.uk)
+
+NOTE: All code here will be executed on the PyMol server side.
 """
 
 import logging
 import os
 import socket
+import tempfile
 import threading
 from xmlrpc.server import SimpleXMLRPCServer
 
@@ -72,6 +76,35 @@ def is_alive() -> bool:
         int: Always returns 1 to indicate the server is alive and functioning.
     """
     return True
+
+
+def get_state(selection: str = "(all)", state: int = -1, format: str = "pdb") -> str:
+    """Get the current state of the PyMOL session as a PDB string.
+
+    This function retrieves the current state of the PyMOL session, including all
+    molecules, their coordinates, and other relevant information, and returns it
+    as a PDB string.
+
+    Args:
+        - selection (str, optional): The selection of atoms to include in the PDB string.
+            Defaults to "all".
+        - state (int, optional): The state of the molecule to include in the PDB string.
+            Defaults to `-1`, which means the current state. If state is 0, then
+            a multi-state output file is written.
+        - format (str, optional): The format of the file to save. Defaults to "pdb".
+            Supported formats: "pdb", "mol", "png", "cif"
+
+    Returns:
+        str: A PDB string representing the current state of the PyMOL session.
+    """
+    # Create a temporary file to store the PDB string
+    with tempfile.NamedTemporaryFile(
+        delete=False, suffix=f".{format}"
+    ) as temp_pdb_file:
+        pymol_cmd.save(temp_pdb_file.name, selection, state, format)
+        with open(temp_pdb_file.name, "r") as file:
+            state_str = file.read()
+    return state_str
 
 
 def launch_server(
