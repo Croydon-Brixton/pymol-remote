@@ -102,6 +102,9 @@ class PymolSession(object):
                 f"'{self.__class__.__name__}' object has no attribute '{name}' and no server connection"
             )
 
+        if name == "cmd":
+            return getattr(self._server, name)
+
         # If not, get the attribute from the server proxy
         call_proxy = getattr(self._server, name)
 
@@ -142,6 +145,31 @@ class PymolSession(object):
 
     def print_help(self):
         print(self.docs())
+
+    def help(self, command: str | None = None):
+        if command is None:
+            help_str = "Get help for a specific command by passing the command name to the `help` method.\n"
+            help_str += "For example:\n"
+            help_str += "```\n"
+            help_str += "session.help('fetch')\n"
+            help_str += "```\n"
+            help_str += "\n"
+            help_str += (
+                "To get links to more documentation, call `print(session.docs())`.\n"
+            )
+            help_str += "Available commands:\n"
+            # Parse string encoding a `list[str]` into a list of strings
+            available_commands = self._server.help([])
+            # ... remove the first and last characters of the string
+            available_commands = available_commands[1:-1]
+            # ... split the string into a list of strings
+            available_commands = available_commands.split(", ")
+            help_str += "\n  -"
+            help_str += "\n  -".join(available_commands)
+
+            print(help_str)
+        else:
+            print(self._server.help([command]))
 
     def docs(self) -> str:
         help_str = "You can find more information about the available commands here:\n"
