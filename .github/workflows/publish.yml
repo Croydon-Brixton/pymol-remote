@@ -20,7 +20,7 @@ jobs:
       - name: install_hatch
         run: pip install hatch
 
-      - name: build_package
+      - name: build
         run: hatch build
 
       - name: publish
