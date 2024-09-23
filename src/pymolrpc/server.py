@@ -16,7 +16,8 @@ Modified 2013-04-17 Thomas Holder, Schrodinger, Inc.
 
 import logging
 import threading
-import xmlrpc.server as SimpleXMLRPCServer
+import socket
+from xmlrpc.server import SimpleXMLRPCServer
 
 from pymolrpc.common import (
     LOG_LEVEL,
@@ -41,6 +42,22 @@ except ImportError as e:
     raise e.with_traceback(e.__traceback__)
 
 _server = None
+
+
+def get_local_ip():
+    try:
+        # Create a socket and connect to an external server
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except Exception as e:
+        return (
+            "IP Address could not be inferred. "
+            "Try checking `ifconfig` or `ipconfig` on Linux or MacOS, "
+            "or `netsh` on Windows."
+        )
 
 
 def is_alive() -> bool:
@@ -84,7 +101,7 @@ def launch_server(
     cgo_dict = {}
     for i in range(n_ports_to_try):
         try:
-            _server = SimpleXMLRPCServer.SimpleXMLRPCServer(
+            _server = SimpleXMLRPCServer(
                 (hostname, port + i), logRequests=0, allow_none=True
             )
         except Exception:  # noqa: E722
@@ -93,7 +110,7 @@ def launch_server(
             break
 
     if _server:
-        print("xml-rpc server running on host %s, port %d" % (hostname, port + i))
+        ip_address = get_local_ip() if hostname == "localhost" else hostname
 
         # register pymol built-ins
         _server.register_instance(pymol_cmd)
@@ -107,6 +124,55 @@ def launch_server(
         server_thread.daemon = True
         server_thread.start()
         logger.info("xml-rpc server running on host %s, port %d" % (hostname, port + i))
+        print(f"xml-rpc server running on host {ip_address}, port {port + i}")
+        print(f"Likely IP address: {ip_address}")
     else:
         print("xml-rpc server could not be started")
         logger.error("xml-rpc server could not be started")
+
+
+class PymolXMLRPCServer(SimpleXMLRPCServer):
+    def __init__(
+        self,
+        hostname: str,
+        port: int,
+        interface: PymolXMLRPCInterface,
+    ):
+        self.interface = interface
+        super().__init__((hostname, port), logRequests=0, allow_none=True)
+
+        def _dispatch(self, method, params):
+            func = None
+
+            if hasattr(self.interface, method):
+                func = getattr(self.interface, method)
+            elif hasattr(pymol_cmd, method):
+                func = getattr(pymol_cmd, method)
+
+            if not callable(func):
+                raise Exception(
+                    f"Function {method} not found. Existing functions: {dir(self.interface)}"
+                )
+            else:
+                result = func(*params)
+
+            return result
+
+
+class PymolXMLRPCInterface:
+    def __init__(
+        self, hostname: str = PYMOL_RPC_HOST, port: int = PYMOL_RPC_DEFAULT_PORT
+    ):
+        self.hostname = hostname
+        self.port = port
+        self._server = PymolXMLRPCServer(self.hostname, self.port, self)
+        server_thread = threading.Thread(target=self._server.serve_forever)
+        server_thread.daemon = True
+        server_thread.start()
+        print(f"xml-rpc server running on host {self.hostname}, port {self.port}")
+
+    def close_all(self):
+        pymol_cmd.delete("*")
+
+    def load_example(self):
+        pymol_cmd.load("1ubq")
