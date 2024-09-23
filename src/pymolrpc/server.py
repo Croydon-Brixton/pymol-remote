@@ -136,7 +136,7 @@ class PymolXMLRPCServer(SimpleXMLRPCServer):
         self,
         hostname: str,
         port: int,
-        interface: PymolXMLRPCInterface,
+        interface: "PymolXMLRPCInterface",
     ):
         self.interface = interface
         super().__init__((hostname, port), logRequests=0, allow_none=True)
