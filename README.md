@@ -56,4 +56,4 @@ pymol.print_help()
 This implementation is inspired by and based on the original [RDKit RPC](https://github.com/rdkit/rdkit/blob/master/rdkit/python/rdkit/Chem/PyMol.py) implementation and [PyMOL RPC](https://github.com/schrodinger/pymol-open-source/blob/9d3061ca58d8b69d7dad74a68fc13fe81af0ff8e/modules/pymol/rpc.py) by Greg Landrum. Thank you Greg! And thank you Schrodinger for making PyMOL open source!
 
 ## 4. License
-This code is licensed under the same terms as PyMOL. See [license.txt](./license.txt) for more details.
+This code is licensed under the same terms as PyMOL. See [LICENSE](./LICENSE) for more details.
