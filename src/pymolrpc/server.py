@@ -177,8 +177,9 @@ def launch_server(
             # _server = SimpleXMLRPCServer(
             #     (hostname, port + i), logRequests=0, allow_none=True
             # )
-        except Exception:  # noqa: E722
+        except Exception as e:  # noqa: E722
             _server = None
+            print(e)
         else:
             break
 
@@ -198,9 +199,9 @@ def launch_server(
         server_thread = threading.Thread(target=_server.serve_forever)
         server_thread.daemon = True
         server_thread.start()
-        logger.info("xml-rpc server running on host %s, port %d" % (hostname, port + i))
+
+        # Log output to pymol console to help user find the server
         print(f"xml-rpc server running on host {hostname}, port {port + i}")
         print(f"Likely IP address: {ip_address}")
     else:
         print("xml-rpc server could not be started")
-        logger.error("xml-rpc server could not be started")
