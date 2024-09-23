@@ -45,7 +45,7 @@ class PymolSession(object):
         hostname: str = PYMOL_RPC_HOST,
         port: int = PYMOL_RPC_DEFAULT_PORT,
         force_new: bool = False,
-        timeout: float = 10.0,  # Default timeout of 10 seconds
+        timeout: float = 5.0,  # Default timeout of 5 seconds
     ):
         """
         Initializes a PymolSession object to interact with a PyMol RPC server.
@@ -54,7 +54,7 @@ class PymolSession(object):
             - hostname (str): The hostname of the PyMol RPC server. Defaults to PYMOL_RPC_HOST.
             - port (int): The port number of the PyMol RPC server. Defaults to PYMOL_RPC_DEFAULT_PORT.
             - force_new (bool): If True, forces the creation of a new server connection. Defaults to False.
-            - timeout (float): The timeout duration in seconds for the server connection. Defaults to 10 10.18.178.186seconds.
+            - timeout (float): The timeout duration in seconds for the server connection. Defaults to 5 seconds.
 
         Raises:
             - RuntimeError: If the connection to the PyMol RPC server fails.
