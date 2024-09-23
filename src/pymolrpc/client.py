@@ -106,7 +106,17 @@ class PymolSession(object):
         call_proxy = getattr(self._server, name)
 
         def _call(*args, **kwargs):
-            return call_proxy(args, kwargs)
+            try:
+                return call_proxy(args, kwargs)
+            except Exception:
+                if args and kwargs:
+                    return call_proxy(*args, **kwargs)
+                elif args:
+                    return call_proxy(*args)
+                elif kwargs:
+                    return call_proxy(**kwargs)
+                else:
+                    return call_proxy()
 
         return _call
 
