@@ -50,27 +50,31 @@ class PymolSession(object):
         - https://pymol.org/pymol-command-ref.html
         - https://pymolwiki.org/index.php/Category:Commands
 
-    You can invoke all pymol commands using direclty as methods on this object.
+    You can invoke all pymol commands as methods of this object.
     For example:
 
     ```python
-    >>> session.fetch('6lyz')
-    >>> session.get_names()
+    >>> session.fetch('6lyz')  # loads the structure 6lyz from rcsb
+    >>> session.get_names()  # get the names of all objectes in the session
     ```
 
     You may also use any command that can be called in the pymol console with the `do` method.
     For example:
 
     ```python
-    >>> session.do('set valence, on')
+    >>> session.do('set valence, on')  # turn on valence display of the bonds
     ```
 
     To get the current state of the pymol session from the server, you can use the `get_state` method.
     For example:
 
     ```python
-    session.get_state(selection="(all)", state=-1, format="cif")
-    session.get_state(selection="(all)", state=-1, format="pdb")
+    session.get_state(
+        selection="(all)", state=-1, format="cif"
+    )  # returns the current state as .cif string
+    session.get_state(
+        selection="(all)", state=-1, format="pdb"
+    )  # returns the current state as .pdb string
     ```
 
     To get help with a specific command, you can use the `help` method.
