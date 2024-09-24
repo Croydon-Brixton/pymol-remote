@@ -9,6 +9,7 @@ dynamic = ["version"]
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
 dependencies = []
+urls = { "Homepage" = "https://github.com/Croydon-Brixton/pymol-remote" }
 
 
 # Scripts ---------------------------------------------------------------------------

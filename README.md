@@ -1,5 +1,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![PyPI](https://img.shields.io/pypi/v/pymol-remote?color=blue)](https://pypi.org/project/pymol-remote/)
+[![GitHub](https://img.shields.io/badge/github-gray?link=https%3A%2F%2Fgithub.com%2FCroydon-Brixton%2Fpymol-remote)](https://github.com/Croydon-Brixton/pymol-remote)
+
 # PyMOL Remote
 > A simple RPC client for sending commands and data between Python and PyMOL.
 (RPC = Remote Procedure Call)
