@@ -313,6 +313,9 @@ def launch_server(
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(
             get_state, "get_state"
         )
+        _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(
+            set_state, "set_state"
+        )
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_function_with_kwargs(help, "help")
         _GLOBAL_PYMOL_XMLRPC_SERVER.register_introspection_functions()
         server_thread = threading.Thread(
