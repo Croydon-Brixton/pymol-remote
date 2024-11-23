@@ -158,6 +158,39 @@ def get_state(
     return buffer
 
 
+def set_state(
+    buffer: str | bytes, object: str = "", state: int = 0, format: str = "pse"
+) -> None:
+    """Set the state of the PyMOL session using the provided buffer.
+
+    This function sets the state of the PyMOL session using the provided buffer,
+    which contains the state information in the appropriate format (e.g. pse bytes or
+    pdb string).
+
+    Args:
+        - buffer (str | bytes): The buffer containing the state information to load.
+        - object (str, optional): The name of the object to load the state into.
+            Defaults to "" (the current object).
+        - state (int, optional): The state number to load the information into.
+            Defaults to 0.
+        - format (str, optional): The format of the buffer. Defaults to "pse".
+            Supports all PyMOL supported formats: https://pymolwiki.org/index.php/Load
+
+    Returns:
+        None
+    """
+    # Create a temporary file to write to
+    # (pymol does not appear to support loading from in-memory buffers)
+    with tempfile.NamedTemporaryFile(delete=True) as temp_pdb_file:
+        if isinstance(buffer, str):
+            with open(temp_pdb_file.name, "w") as file:
+                file.write(buffer)
+        else:
+            with open(temp_pdb_file.name, "wb") as file:
+                file.write(buffer)
+        pymol_cmd.load(temp_pdb_file.name, object, state, format)
+
+
 def help(command: str | None = None) -> str:
     """Provide help information for PyMOL XML-RPC server functions.
 
