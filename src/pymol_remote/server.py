@@ -130,12 +130,12 @@ def get_state(
             Defaults to `-1`, which means the current state. If state is 0, then
             a multi-state output file is written.
         - format (str, optional): The format of the file to save. Defaults to "pdb".
-            Supported formats: "pdb", "png", "cif", "pkl", "pse"
+            Supported formats: "pdb", "sdf", "mol", "png", "cif", "pkl", "pse"
 
     Returns:
         str | bytes: The PDB string or binary file content.
     """
-    _ALLOWED_TEXT_FORMATS = ("pdb", "cif")
+    _ALLOWED_TEXT_FORMATS = ("pdb", "cif", "mol", "sdf")
     _ALLOWED_BINARY_FORMATS = ("png", "pkl", "pse")
     if format not in _ALLOWED_TEXT_FORMATS + _ALLOWED_BINARY_FORMATS:
         raise ValueError(
