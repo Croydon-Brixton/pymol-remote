@@ -1,0 +1,19 @@
+name: pymol-remote  # development environment for pymol-remote
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.10
+
+  - pymol-open-source
+  - pytest>=8.3.0,<9.0.0
+
+  - pip
+  - pip:
+    - biotite>=1.0
+    - ruff>=0.8.0,<0.9.0
+    - pytest-dotenv>=0.5.2
+    # ... install pymol-remote in editable mode
+    - -e .
