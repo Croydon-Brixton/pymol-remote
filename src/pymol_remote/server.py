@@ -85,7 +85,8 @@ def _get_local_ip() -> str:
 
     Note:
         This method may not work in all network configurations, especially in complex
-        or restricted network environments.
+        or restricted network environments. For more information on how to find out 
+        your local IP address, see e.g. https://www.avg.com/en/signal/find-ip-address
     """
     try:
         # Create a socket and connect to an external server
@@ -128,12 +129,19 @@ def get_state(
             Defaults to "all".
         - state (int, optional): The state of the molecule to include in the output.
             Defaults to `-1`, which means the current state. If state is 0, then
-            a multi-state output file is written.
+            a multi-state output file is written. If you have more than one state, 
+            this produces a multi-state PDB/CIF/etc file.
+            NOTE: If the file extension is ".pse" (PyMOL Session), the complete PyMOL 
+            state is always saved to the file (the selection and state parameters are 
+            thus ignored).
         - format (str, optional): The format of the file to save. Defaults to "pdb".
             Supported formats: "pdb", "sdf", "mol", "png", "cif", "pkl", "pse"
 
     Returns:
         str | bytes: The PDB string or binary file content.
+
+    References:
+     - https://pymolwiki.org/index.php/Save
     """
     _ALLOWED_TEXT_FORMATS = ("pdb", "cif", "mol", "sdf")
     _ALLOWED_BINARY_FORMATS = ("png", "pkl", "pse")
@@ -145,7 +153,7 @@ def get_state(
     # Create a temporary file to write to
     # (pymol does not appear to support writing to in-memory buffers)
     with tempfile.NamedTemporaryFile(
-        delete=False, suffix=f".{format}"
+        delete=True, suffix=f".{format}"
     ) as temp_pdb_file:
         pymol_cmd.save(temp_pdb_file.name, selection, state, format)
 
@@ -172,16 +180,21 @@ def set_state(
         - object (str, optional): The name of the object to load the state into.
             Defaults to "" (the current object).
         - state (int, optional): The state number to load the information into.
-            Defaults to 0.
+            State 0 means to append. Defaults to 0. 
         - format (str, optional): The format of the buffer. Defaults to "pse".
             Supports all PyMOL supported formats: https://pymolwiki.org/index.php/Load
 
     Returns:
         None
+
+    References:
+     - https://pymolwiki.org/index.php/Load
     """
     # Create a temporary file to write to
     # (pymol does not appear to support loading from in-memory buffers)
-    with tempfile.NamedTemporaryFile(delete=True) as temp_pdb_file:
+    with tempfile.NamedTemporaryFile(
+        delete=True, suffix=f".{format}"
+    ) as temp_pdb_file:
         if isinstance(buffer, str):
             with open(temp_pdb_file.name, "w") as file:
                 file.write(buffer)
@@ -263,7 +276,7 @@ def launch_server(
         The server will attempt to bind to the first available port in the range
         [port, port + n_ports_to_try - 1]. If successful, it prints the host and port information.
 
-    Reference:
+    References:
         - https://github.com/schrodinger/pymol-open-source/blob/9d3061ca58d8b69d7dad74a68fc13fe81af0ff8e/modules/pymol/rpc.py
         - https://pymolwiki.org/index.php/XML-RPC_server
     """
