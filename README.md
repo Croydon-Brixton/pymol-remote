@@ -66,3 +66,7 @@ This implementation is inspired by and based on the original [RDKit RPC](https:/
 
 ## 4. License
 This code is licensed under the same terms as PyMOL. See [LICENSE](./LICENSE) for more details.
+
+
+## 5. Contributing
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
