@@ -96,3 +96,14 @@ exclude = ["*.ipynb"]
 
 # Sort imports
 extend-select = ["I"]
+
+
+# Testing settings --------------------------------------------------------------------
+[tool.pytest]
+addopts = "--cov=pymol_remote --cov-report=term-missing"
+env = [
+    "PYTHONPATH=src",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD=True"
+]
+env_files = [".env"]
+

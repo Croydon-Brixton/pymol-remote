@@ -18,7 +18,7 @@ from pymol_remote.common import (
     exists,
 )
 
-logger = logging.getLogger("client")
+logger = logging.getLogger("pymol-remote:client")
 logger.setLevel(LOG_LEVEL)
 handler = logging.StreamHandler()
 handler.setFormatter(
