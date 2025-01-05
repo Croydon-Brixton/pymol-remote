@@ -41,7 +41,7 @@ def test_session_timeout():
 
 
 @pytest.mark.requires_server
-def test_session_initialization(hostname, port):
+def test_session_initialization(hostname, port, pymol_server):
     """Test basic session initialization."""
     session = PymolSession(hostname=hostname, port=port, force_new=True)
     assert session.hostname == hostname
@@ -50,7 +50,7 @@ def test_session_initialization(hostname, port):
 
 @pytest.mark.requires_server
 @pytest.mark.parametrize("force_new", [True, False])
-def test_force_new_connection(hostname, port, force_new):
+def test_force_new_connection(hostname, port, force_new, pymol_server):
     """Test forcing new connections vs reusing existing ones."""
     session1 = PymolSession(hostname=hostname, port=port)
     session2 = PymolSession(hostname=hostname, port=port, force_new=force_new)
@@ -62,7 +62,7 @@ def test_force_new_connection(hostname, port, force_new):
 
 
 @pytest.mark.requires_server
-def test_session_command_execution(session):
+def test_session_command_execution(session, pymol_server):
     """Test basic command execution through the session."""
     # Load a structure
     session.fetch("1ycr")
@@ -76,7 +76,7 @@ def test_session_command_execution(session):
 
 @pytest.mark.requires_server
 @pytest.mark.parametrize("format", ["pdb", "cif"])
-def test_get_state_rough(session, format):
+def test_get_state_rough(session, format, pymol_server):
     """Test getting state in different formats."""
     TEST_STRUCTURE = "1ycr"
 
@@ -112,7 +112,7 @@ def test_get_state_detailed(session, format):
 
 
 @pytest.mark.requires_server
-def test_set_and_get_pse_state(session):
+def test_set_and_get_pse_state(session, pymol_server):
     """Test setting and getting state."""
     # Do some random commands to create a session state
     # ... create a session state
@@ -165,6 +165,6 @@ def test_set_and_get_pse_state(session):
 
 
 @pytest.mark.requires_server
-def test_python_command(session):
+def test_python_command(session, pymol_server):
     """Test executing Python commands."""
     session.python("x = 5")

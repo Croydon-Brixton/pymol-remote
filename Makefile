@@ -24,6 +24,10 @@ format:
 	ruff format .
 	ruff check --fix .
 
+## Run tests
+test:
+	PYMOL_RPC_HOST=localhost pytest
+
 ## Create a conda environment for the server
 server_env:
 	echo "TODO"

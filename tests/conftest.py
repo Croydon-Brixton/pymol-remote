@@ -1,15 +1,15 @@
 # Configuration for pytest
 
 import logging
-import os
+import subprocess
+import time
 
 import pytest
 
 from pymol_remote.client import PymolSession
-from pymol_remote.common import PYMOL_RPC_DEFAULT_PORT, PYMOL_RPC_HOST
+from pymol_remote.common import log_level, pymol_rpc_host, pymol_rpc_port
 
 # Configure logging
-log_level = os.getenv("LOG_LEVEL", "INFO")
 logging.basicConfig(
     level=getattr(logging, log_level),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -21,22 +21,73 @@ client_logger, server_logger = logging.getLogger("client"), logging.getLogger("s
 client_logger.setLevel(log_level)
 server_logger.setLevel(log_level)
 
-PYMOL_RPC_HOST = os.getenv("PYMOL_RPC_HOST", PYMOL_RPC_HOST)
-PYMOL_RPC_PORT = int(os.getenv("PYMOL_RPC_PORT", PYMOL_RPC_DEFAULT_PORT))
-
 logger.debug(f"Logging level: {log_level}")
-logger.debug(f"PyMOL RPC host: {PYMOL_RPC_HOST}")
-logger.debug(f"PyMOL RPC port: {PYMOL_RPC_PORT}")
+logger.debug(f"PyMOL RPC host: {pymol_rpc_host}")
+logger.debug(f"PyMOL RPC port: {pymol_rpc_port}")
 
 
 @pytest.fixture
 def hostname():
-    return PYMOL_RPC_HOST
+    return pymol_rpc_host
 
 
 @pytest.fixture
 def port():
-    return PYMOL_RPC_PORT
+    return pymol_rpc_port
+
+
+@pytest.fixture(scope="session")
+def pymol_server():
+    """Launches a PyMOL server subprocess for tests that require it."""
+    logger.info("Starting PyMOL server subprocess...")
+
+    # Start PyMOL server process
+    server_process = subprocess.Popen(
+        "pymol_remote",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        shell=True,
+    )
+
+    # Give the server a moment to start up
+    time.sleep(2)
+
+    # Check if process is still running
+    if server_process.poll() is not None:
+        # Process has terminated - get output
+        stdout, stderr = server_process.communicate()
+        raise RuntimeError(
+            f"PyMOL server failed to start!\n"
+            f"Exit code: {server_process.returncode}\n"
+            f"stdout: {stdout}\n"
+            f"stderr: {stderr}"
+        )
+
+    # Verify server is responding
+    try:
+        test_session = PymolSession(hostname=pymol_rpc_host, port=pymol_rpc_port)
+        test_session.is_alive()
+        logger.info("PyMOL server started successfully!")
+    except Exception as e:
+        # Kill the process if it's still running
+        server_process.terminate()
+        server_process.wait()
+        stdout, stderr = server_process.communicate()
+        raise RuntimeError(
+            f"PyMOL server started but is not responding!\n"
+            f"Error: {str(e)}\n"
+            f"stdout: {stdout}\n"
+            f"stderr: {stderr}"
+        )
+
+    yield server_process
+
+    # Cleanup after tests
+    logger.info("Shutting down PyMOL server...")
+    server_process.terminate()
+    server_process.wait()
+    logger.info("PyMOL server shutdown complete.")
 
 
 @pytest.fixture
