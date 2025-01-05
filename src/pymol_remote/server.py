@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import inspect
 import logging
-import os
 import socket
 import tempfile
 import threading
@@ -19,10 +18,11 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 from pymol_remote.common import (
     ALL_INTERFACES,
-    LOCALHOST,
-    N_PORTS_TO_TRY,
-    PYMOL_RPC_DEFAULT_PORT,
+    DEFAULT_HOST,
     default,
+    pymol_rpc_host,
+    pymol_rpc_n_ports_to_try,
+    pymol_rpc_port,
 )
 
 logger = logging.getLogger("pymol-remote:server")
@@ -198,9 +198,13 @@ def set_state(
         if isinstance(buffer, str):
             with open(temp_pdb_file.name, "w") as file:
                 file.write(buffer)
-        else:
+        elif isinstance(buffer, bytes):
             with open(temp_pdb_file.name, "wb") as file:
                 file.write(buffer)
+        else:
+            raise ValueError(
+                f"Invalid buffer type: {type(buffer)}. Must be `str` or `bytes`."
+            )
         pymol_cmd.load(temp_pdb_file.name, object, state, format)
 
 
@@ -251,9 +255,9 @@ def _get_function_signature(fn: Callable, command: str) -> str:
 
 
 def launch_server(
-    hostname: str = os.getenv("PYMOL_RPCHOST", ALL_INTERFACES),
-    port: int = os.getenv("PYMOL_RPC_PORT", PYMOL_RPC_DEFAULT_PORT),
-    n_ports_to_try: int = os.getenv("PYMOL_RPC_N_PORTS_TO_TRY", N_PORTS_TO_TRY),
+    hostname: str = pymol_rpc_host,
+    port: int = pymol_rpc_port,
+    n_ports_to_try: int = pymol_rpc_n_ports_to_try,
 ) -> None:
     """Launches the XML-RPC server in a separate thread.
 
@@ -261,10 +265,10 @@ def launch_server(
     procedure calls to control PyMOL functionality.
 
     Args:
-        hostname (str, optional): The hostname for the server. Defaults to localhost if not specified.
-        port (int, optional): The initial port to try for the server. Defaults to PYMOL_RPC_DEFAULT_PORT.
+        hostname (str, optional): The hostname for the server. Defaults to "localhost" if not specified.
+        port (int, optional): The initial port to try for the server. Defaults to 9123.
         n_ports_to_try (int, optional): The number of consecutive ports to try if the initial port is unavailable.
-                                Defaults to N_PORTS_TO_TRY.
+                                Defaults to 5.
 
     Returns:
         None
@@ -282,6 +286,8 @@ def launch_server(
     """
     # NOTE: We `log` with print statements to write to the pymol console (logging messsages
     #  are not displayed to the pymol console)
+    hostname = hostname.lower()
+    port = int(port)
     print(f"Attempting to launch server on {hostname}:{port} ...")
 
     try:
@@ -306,10 +312,12 @@ def launch_server(
             print(f"Warning: Failed to launch server on {hostname}:{port + i}: {e}")
         else:
             break
+    # ... update the port to the one that worked
+    port = port + i
 
     if _GLOBAL_PYMOL_XMLRPC_SERVER:
         ip_address = (
-            _get_local_ip() if hostname in (LOCALHOST, ALL_INTERFACES) else hostname
+            _get_local_ip() if hostname in (DEFAULT_HOST, ALL_INTERFACES) else hostname
         )
 
         # register pymol built-ins
@@ -338,13 +346,31 @@ def launch_server(
         server_thread.start()
 
         # Log output to pymol console to help user find the server
-        print(f"xml-rpc server running on host {hostname}, port {port + i}")
-        print(f"Likely IP address: {ip_address}")
-        print(
-            "Ensure you can ping this address from your client machine (where you will "
-            " run your python code).\n"
-            "If it does not work, you might need to use commands like `ifconfig` or `ipconfig` on your "
-            "client machine to find the correct IP address of the server in your local network."
-        )
+        print(f"xml-rpc server running on host {hostname}, port {port}")
+        if hostname == ALL_INTERFACES:
+            print(
+                f"WARNING: Running on all interfaces ({ALL_INTERFACES}) exposes your PyMOL server to all network "
+                f"interfaces, allowing any device on your network to potentially control PyMOL and execute commands. "
+                f"This could lead to unauthorized manipulation of molecular structures or unwanted system commands. "
+                f"For better security follow option A or B:\n"
+                f" A1. Use 'localhost' to restrict access to your local machine only\n"
+                f" A2. Use SSH port forwarding for remote access (`ssh -R {port}:localhost:{port} <your_username>@<your_server_address>`)\n"
+                f" B1. If network access is required, configure your firewall to restrict incoming connections"
+            )
+
+        if hostname in ("localhost", "127.0.0.1"):
+            print(
+                f"Running on localhost (127.0.0.1), so you will need to use SSH with port forwarding to "
+                f"connect to the server.\nFor example:\n"
+                f"`ssh -R {port}:{hostname}:{port} <your_username>@<your_server_address>`"
+            )
+        else:
+            print(f"Likely IP address: {ip_address}")
+            print(
+                "Ensure you can ping this address from your client machine (where you will "
+                " run your python code).\n"
+                "If it does not work, you might need to use commands like `ifconfig` or `ipconfig` on your "
+                "client machine to find the correct IP address of the server in your local network."
+            )
     else:
         print("xml-rpc server could not be started.")

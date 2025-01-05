@@ -12,14 +12,14 @@ from http.client import HTTPConnection
 from xmlrpc.client import ServerProxy, Transport
 
 from pymol_remote.common import (
-    LOG_LEVEL,
-    PYMOL_RPC_DEFAULT_PORT,
-    PYMOL_RPC_HOST,
     exists,
+    log_level,
+    pymol_rpc_host,
+    pymol_rpc_port,
 )
 
 logger = logging.getLogger("pymol-remote:client")
-logger.setLevel(LOG_LEVEL)
+logger.setLevel(log_level)
 handler = logging.StreamHandler()
 handler.setFormatter(
     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -88,8 +88,8 @@ class PymolSession(object):
 
     def __init__(
         self,
-        hostname: str = PYMOL_RPC_HOST,
-        port: int = PYMOL_RPC_DEFAULT_PORT,
+        hostname: str = pymol_rpc_host,
+        port: int = pymol_rpc_port,
         force_new: bool = False,
         timeout: float = 5.0,  # Default timeout of 5 seconds
     ):
