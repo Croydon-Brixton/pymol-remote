@@ -168,3 +168,11 @@ def test_set_and_get_pse_state(session, pymol_server):
 def test_python_command(session, pymol_server):
     """Test executing Python commands."""
     session.python("x = 5")
+
+@pytest.mark.requires_server
+def test_make_pymol_pretty(session, pymol_server):
+    """Test making PyMOL look pretty."""
+    from pymol_remote.style import make_pymol_pretty
+
+    session.fetch("6lyz")
+    make_pymol_pretty(session)
