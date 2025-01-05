@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Final
 
 
 def exists(obj: Any) -> bool:
@@ -12,10 +12,15 @@ def default(obj: Any, default_obj: Any) -> Any:
     return obj if exists(obj) else default_obj
 
 
-LOCALHOST = "localhost"  # ... does not allow connections from other machines
-ALL_INTERFACES = "0.0.0.0"  # ... allows connections from other machines
+# Constants
+ALL_INTERFACES: Final[str] = "0.0.0.0"  # ... allows connections from other machines
+DEFAULT_HOST: Final[str] = (
+    "localhost"  # ... does not allow connections from other machines
+)
+DEFAULT_PORT: Final[int] = 9123
+DEFAULT_N_PORTS_TO_TRY: Final[int] = 5
 
-LOG_LEVEL = os.getenv("PYMOL_RPC_LOG_LEVEL", "INFO")
-PYMOL_RPC_HOST = os.getenv("PYMOL_RPCHOST", ALL_INTERFACES)
-PYMOL_RPC_DEFAULT_PORT = os.getenv("PYMOL_RPC_PORT", 9123)
-N_PORTS_TO_TRY = os.getenv("PYMOL_RPC_N_PORTS_TO_TRY", 5)
+log_level = os.getenv("PYMOL_RPC_LOG_LEVEL", "INFO")
+pymol_rpc_host = os.getenv("PYMOL_RPC_HOST", DEFAULT_HOST)
+pymol_rpc_port = os.getenv("PYMOL_RPC_PORT", DEFAULT_PORT)
+pymol_rpc_n_ports_to_try = os.getenv("PYMOL_RPC_N_PORTS_TO_TRY", DEFAULT_N_PORTS_TO_TRY)
