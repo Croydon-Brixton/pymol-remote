@@ -24,6 +24,13 @@ First things first, some definitions:
 
 On the server side, you need to have a working `pymol` installation. Whichever python interpreter you are using to run `pymol` should also have `pymol-remote` installed (or needs to have `pymol-remote` in its pythonpath). The easiest way to do this is to [install `pymol` via `conda`](https://pymol.org/conda/) into an existing or new environment and then install `pymol-remote` in the same environment with `pip install pymol-remote`.
 
+***Note if you are on a mac M1/M2/M3***: The pymol package is not currently available for osx-arm64 through conda. To get around this you need to first create your conda environment using the following:
+
+```
+/usr/sbin/softwareupdate --install-rosetta
+CONDA_SUBDIR=osx-64 conda create ...
+```
+
 On the client side, you need to have a working Python environment with `pymol-remote` installed.
 
 ## 2. Usage
