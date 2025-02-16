@@ -169,6 +169,7 @@ def test_python_command(session, pymol_server):
     """Test executing Python commands."""
     session.python("x = 5")
 
+
 @pytest.mark.requires_server
 def test_make_pymol_pretty(session, pymol_server):
     """Test making PyMOL look pretty."""
@@ -176,3 +177,17 @@ def test_make_pymol_pretty(session, pymol_server):
 
     session.fetch("6lyz")
     make_pymol_pretty(session)
+
+
+@pytest.mark.requires_server
+def test_invalid_command(session, pymol_server):
+    """Test that invalid commands raise an error."""
+    with pytest.raises(AttributeError):
+        session.invalid_command()
+
+
+@pytest.mark.requires_server
+def test_find_command(session, pymol_server):
+    """Test finding commands."""
+    commands = session.find_command("name")
+    assert "get_names" in commands

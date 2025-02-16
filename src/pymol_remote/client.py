@@ -1,13 +1,18 @@
 """
 A client for the PyMOL RPC server.
 
-# NOTE: All code here will be executed on the client side (where you are running python & this file)
+This module provides a client interface to interact with a PyMOL RPC server, allowing remote execution of PyMOL commands
+and retrieval of session information.
+
+Note:
+    All code here will be executed on the client side (where you are running python & this file)
 """
 
 from __future__ import annotations
 
 import logging
 import socket
+from functools import cached_property
 from http.client import HTTPConnection
 from xmlrpc.client import ServerProxy, Transport
 
@@ -137,7 +142,27 @@ class PymolSession(object):
         else:
             self._server = _GLOBAL_SERVER_PROXY
 
-    def __getattr__(self, name):
+    @cached_property
+    def _available_commands(self):
+        # Parse string encoding a `list[str]` into a list of strings
+        available_commands = sorted(self._server.system.listMethods())
+        # ... remove any system.* commands
+        available_commands = [
+            command
+            for command in available_commands
+            if not command.startswith("system.")
+        ]
+        # ... remove any capitalized commands
+        available_commands = [
+            command for command in available_commands if not command[0].isupper()
+        ]
+        # ... add custom commands
+        custom_commands = [
+            "python",
+        ]
+        return set(sorted(available_commands + custom_commands))
+
+    def __getattr__(self, name: str):
         # First, check if the attribute exists in the instance
         if name in self.__dict__:
             return self.__dict__[name]
@@ -150,6 +175,14 @@ class PymolSession(object):
 
         if name == "cmd":
             return getattr(self._server, name)
+
+        if name not in self._available_commands:
+            alternative_commands = self.find_command(name)
+            error_msg = f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            if alternative_commands:
+                error_msg += "\n\nDid you mean one of these instead?\n  - "
+                error_msg += "\n  - ".join(alternative_commands)
+            raise AttributeError(error_msg)
 
         # If not, get the attribute from the server proxy
         call_proxy = getattr(self._server, name)
@@ -170,14 +203,17 @@ class PymolSession(object):
         return _call
 
     def python(self, cmd: str):
-        """Execute a Python command as if it were typed in the PyMOL command line,
-        wrapped in pymol's python block:
+        """Executes a Python command in the PyMOL command line.
 
-        ```
-        python
-        <your code>
-        python end
-        ```
+        The command is automatically wrapped in PyMOL's python block syntax:
+            ```
+            python
+            <your code>
+            python end
+            ```
+
+        Args:
+            cmd: The Python command to execute.
         """
         wrapped_cmd = f"python\n{cmd}\npython end"
         self.do(wrapped_cmd)
@@ -189,10 +225,18 @@ class PymolSession(object):
         return repr_str
 
     def print_help(self):
+        """
+        Print the help text for the PymolSession object.
+        """
         print(self.__doc__)
 
-    def help(self, command: str | None = None):
-        if command is None:
+    def help(self, cmd: str | None = None):
+        """Gets help for a specific command or lists all available commands.
+
+        Args:
+            cmd: The command to get help for. If None, lists all available commands.
+        """
+        if cmd is None:
             help_str = "Get help for a specific command by passing the command name to the `help` method.\n"
             help_str += "For example:\n"
             help_str += "```\n"
@@ -203,21 +247,45 @@ class PymolSession(object):
                 "To get links to more documentation, call `session.print_help()`.\n"
             )
             help_str += "Available commands:\n"
-            # Parse string encoding a `list[str]` into a list of strings
-            available_commands = sorted(self._server.system.listMethods())
-            # ... remove any system.* commands
-            available_commands = [
-                command
-                for command in available_commands
-                if not command.startswith("system.")
-            ]
-            # ... remove any capitalized commands
-            available_commands = [
-                command for command in available_commands if not command[0].isupper()
-            ]
             help_str += "\n  -"
-            help_str += "\n  -".join(available_commands)
+            help_str += "\n  -".join(self._available_commands)
 
             print(help_str)
         else:
-            print(self._server.help([command]))
+            print(self._server.help([cmd]))
+
+    def find_command(self, substr: str) -> list[str]:
+        """
+        Find commands that match a given substring.
+
+        Args:
+            - substr (str): The substring to search for in command names.
+
+        Returns:
+            - list[str]: A list of commands that match the substring. The substring must appear in order in the command
+                name, but does not need to be contiguous.
+        """
+        # Convert search string to lowercase for case-insensitive matching
+        substr = substr.lower()
+
+        matches = []
+        for command in self._available_commands:
+            # Convert command to lowercase for comparison
+            command_lower = command.lower().replace("_-", "")
+
+            # Check if all characters from substr appear in order in the command
+            pos = 0
+            found = True
+            for char in substr:
+                pos = command_lower.find(char, pos)
+                if pos == -1:
+                    found = False
+                    break
+                pos += 1
+
+            if found:
+                matches.append(command)
+
+        # Sort matches by length (shorter matches first as they're likely more relevant)
+        matches.sort(key=len)
+        return matches
