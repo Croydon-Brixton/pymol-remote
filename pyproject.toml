@@ -14,7 +14,7 @@ urls = { "Homepage" = "https://github.com/Croydon-Brixton/pymol-remote" }
 
 # Scripts ---------------------------------------------------------------------------
 [project.scripts]
-pymol_remote = "pymol_remote:launch_pymol_with_rpc"
+pymol_remote = "pymol_remote.cli:launch_pymol_with_rpc"
 
 
 # Build settings ----------------------------------------------------------------------
