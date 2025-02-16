@@ -1,46 +1,70 @@
 """
-Launch PyMOL with RPC server (and any other pymol args)
+PyMOL Remote: A Python package for remote control of PyMOL instances.
 
-License:  PyMol
+This module provides functionality to establish and manage remote connections to PyMOL servers,
+enabling programmatic control of PyMOL visualization from Python scripts.
 
-NOTE: This code is run on the PyMOL server side (where you are running PyMOL).
-Execute it with the command `pymol_remote` after installing the package.
+The main entry point is the `get_pymol_session` function which establishes a connection to a
+PyMOL server and returns a session object for interaction.
+
+Example:
+    >>> import pymol_remote
+    >>> session = pymol_remote.get_pymol_session()
+    >>> session.do("load 1abc.pdb")
 """
 
+from pymol_remote import client
 
-def launch_pymol_with_rpc(args=None, block_input_hook=0):
-    """Launch PyMOL with RPC server (and any other pymol args)
 
-    Launch function taken directly from the open source pymol:
-    - https://github.com/schrodinger/pymol-open-source/blob/master/pyproject.toml#L42
-    - https://github.com/schrodinger/pymol-open-source/blob/master/modules/pymol/__init__.py#L405-L429
-
+def get_pymol_session(
+    hostname: str | None = None, port: int | None = None
+) -> client.PymolSession:
     """
-    import sys
+    Establishes a connection to a PyMOL server and returns a `pymol_remote.client.PymolSession` object.
+    First attempts to reuse an existing global session if no hostname/port is specified.
+    Otherwise tries to establish a new connection, attempting up to 5 consecutive ports.
 
-    import pymol
-    from pymol import _cmd, _launch_no_gui, invocation, prime_pymol
+    If you want to use `pymol_remote`, make sure to follow the usage instructions at
+        https://github.com/Croydon-Brixton/pymol-remote
 
-    if args is None:
-        args = sys.argv
-    invocation.parse_args(args)
-    invocation.options.deferred.append(
-        "_do__ /import pymol_remote.server;pymol_remote.server.launch_server()"
-    )
+    Args:
+        - hostname (str | None, optional): The hostname of the PyMOL server. Defaults to 'localhost' if None.
+        - port (int | None, optional): The starting port number to attempt connection. Defaults to 9123 if None.
 
-    if invocation.options.gui == "pmg_qt":
-        if invocation.options.no_gui:
-            return _launch_no_gui()
-        elif invocation.options.testing:
-            return pymol._cmd.test2()
+    Returns:
+        pymol_remote.client.PymolSession: An active connection to the PyMOL server.
 
+    Raises:
+        - ImportError: If `pymol_remote` package is not installed.
+        - RuntimeError: If unable to establish connection after trying 5 consecutive ports.
+    """
+
+    # ... get existing session if available
+    if (hostname is None) and (port is None):
+        session = client._GLOBAL_SERVER_PROXY
+        if session:
+            return client.PymolSession(
+                hostname=session.hostname, port=session.port, force_new=False
+            )
+
+    # ... otherwise, try to connect to a new session
+    hostname = hostname or "localhost"
+    port = port or 9123
+    session: client.PymolSession | None = None
+
+    for port_offset in range(5):
         try:
-            from pmg_qt import pymol_qt_gui
+            session = client.PymolSession(hostname=hostname, port=port + port_offset)
+            break
+        except Exception:
+            continue
 
-            return pymol_qt_gui.execapp()
-        except ImportError as ex:
-            print(f"Qt not available ({ex}), using GLUT/Tk interface")
-            invocation.options.gui = "pmg_tk"
+    if session is None:
+        raise RuntimeError(
+            f"Failed to connect to PyMOL on {hostname}:{port}.\n"
+            "Please ensure you are:\n"
+            "1. Using SSH forwarding correctly\n"
+            "2. Following the `pymol_remote` setup instructions"
+        )
 
-    prime_pymol()
-    _cmd.runpymol(None, block_input_hook)
+    return session
